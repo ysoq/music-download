@@ -27,22 +27,35 @@ app.get('/api/download', async (req, res) => {
         const response = await axios.get(`https://www.hhlqilongzhu.cn/api/dg_QQmusicflac.php?msg=${encodeURIComponent(msg)}&n=${n}&type=json`);
         const songData = response.data.data;
         
+        // 创建歌手文件夹路径
+        const artistDir = path.join(__dirname, 'downloads', songData.song_singer);
+        
+        // 确保歌手文件夹存在
+        if (!fs.existsSync(artistDir)) {
+            fs.mkdirSync(artistDir, { recursive: true });
+        }
+        
         // 下载音乐文件
         const musicResponse = await axios.get(songData.music_url, { responseType: 'stream' });
-        const fileName = `${songData.song_name}-${songData.song_singer}.mp3`;
-        const filePath = path.join(__dirname, 'downloads', fileName);
-        
-        // 确保downloads目录存在
-        if (!fs.existsSync(path.join(__dirname, 'downloads'))) {
-            fs.mkdirSync(path.join(__dirname, 'downloads'));
-        }
+        const fileName = `${songData.song_name}.mp3`;
+        const filePath = path.join(artistDir, fileName);
         
         const writer = fs.createWriteStream(filePath);
         musicResponse.data.pipe(writer);
         
         return new Promise((resolve, reject) => {
             writer.on('finish', () => {
-                res.json({ success: true, message: '下载成功', filePath });
+                // 设置文件属性
+                fs.utimes(filePath, new Date(), new Date(), (err) => {
+                    if (err) console.error('修改文件时间属性失败:', err);
+                });
+                
+                res.json({ 
+                    success: true, 
+                    message: '下载成功', 
+                    filePath,
+                    artist: songData.song_singer
+                });
                 resolve();
             });
             
