@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音乐搜索</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .search-container { display: flex; margin-bottom: 20px; }
+        #search-input { flex: 1; padding: 10px; font-size: 16px; }
+        #search-btn { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+        #song-list { list-style: none; padding: 0; }
+        #song-list li { padding: 10px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <h1>音乐搜索</h1>
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="输入歌曲名" value="">
+        <button id="search-btn">搜索</button>
+    </div>
+    <ul id="song-list"></ul>
+
+    <script>
+        // 获取当前服务地址
+        
+        async function fetchSongs(songName) {
+            try {
+                if (!songName || songName.trim() === '') {
+                    alert('请输入歌曲名');
+                    return;
+                }
+                
+                const response = await fetch(`/api/songs?msg=${encodeURIComponent(songName)}`);
+                const data = await response.json();
+                const songList = document.getElementById('song-list');
+        
+                songList.innerHTML = ''; // 清空列表
+        
+                if (!data.data || data.data.length === 0) {
+                    songList.innerHTML = '<li>没有找到相关歌曲</li>';
+                    return;
+                }
+        
+                data.data.forEach((song, index) => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `${song.song_title} - ${song.song_singer}`;
+                    
+                    // 添加下载按钮
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = '下载';
+                    downloadBtn.style.marginLeft = '10px';
+                    // 修改后的下载按钮点击事件
+                    downloadBtn.onclick = async () => {
+                        downloadBtn.disabled = true;
+                        downloadBtn.textContent = '下载中...';
+                        
+                        try {
+                            const response = await fetch(`/api/download?msg=${encodeURIComponent(songName)}&n=${index + 1}`);
+                            const result = await response.json();
+                            
+                            if (result.success) {
+                                alert('下载成功！文件已保存到服务器');
+                            } else {
+                                alert('下载失败: ' + (result.error || '未知错误'));
+                            }
+                        } catch (error) {
+                            alert('请求出错: ' + error.message);
+                        } finally {
+                            downloadBtn.disabled = false;
+                            downloadBtn.textContent = '下载';
+                        }
+                    };
+                    
+                    listItem.appendChild(downloadBtn);
+                    songList.appendChild(listItem);
+                });
+            } catch (error) {
+                console.error('请求出错:', error);
+                const songList = document.getElementById('song-list');
+                songList.innerHTML = '<li>请求出错，请稍后再试</li>';
+            }
+        }
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', () => {            
+            // 添加搜索按钮点击事件
+            document.getElementById('search-btn').addEventListener('click', () => {
+                const songName = document.getElementById('search-input').value;
+                fetchSongs(songName);
+            });
+            
+            // 添加回车键搜索功能
+            document.getElementById('search-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const songName = document.getElementById('search-input').value;
+                    fetchSongs(songName);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
