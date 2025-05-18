@@ -24,6 +24,7 @@
     <div class="tab-container"> 
         <div class="tab active" data-tab="song">歌曲搜索</div>
         <div class="tab" data-tab="playlist">歌单搜索</div>
+        <div class="tab" data-tab="hot">热歌榜</div>
     </div>
     
     <!-- 歌曲搜索 -->
@@ -39,6 +40,12 @@
         <div class="search-container">
             <input type="text" id="playlist-input" placeholder="输入歌单ID" value="">
             <button id="playlist-btn">搜索</button>
+        </div>
+    </div>
+    
+    <!-- 热歌榜 -->
+    <div class="search-content" id="hot-search">
+        <div class="search-container">
         </div>
     </div>
     
@@ -176,11 +183,82 @@
             }
         }
 
+        // 新增热歌榜函数
+        async function fetchHotSongs() {
+            try {
+                const response = await fetch('/api/hot');
+                const data = await response.json();
+                const songList = document.getElementById('song-list');
+        
+                songList.innerHTML = '';
+        
+                if (!data.data || data.data.length === 0) {
+                    songList.innerHTML = '<li>没有找到热歌榜数据</li>';
+                    return;
+                }
+        
+                data.data.forEach((song, index) => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `${song.name} - ${song.artistsname}`;
+                    
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.style.marginLeft = '10px';
+                    
+                    if (song.downloaded) {
+                        downloadBtn.textContent = '✓ 已下载';
+                        downloadBtn.style.color = '#4CAF50';
+                        downloadBtn.disabled = true;
+                    } else {
+                        downloadBtn.textContent = '下载';
+                        downloadBtn.onclick = async () => {
+                            downloadBtn.disabled = true;
+                            downloadBtn.textContent = '下载中...';
+                            
+                            try {
+                                const response = await fetch(`/api/downloadHot?id=${song.id}&name=${encodeURIComponent(song.name)}&artist=${encodeURIComponent(song.artistsname)}`);
+                                const result = await response.json();
+                                
+                                if (result.success) {
+                                    downloadBtn.textContent = '✓ 已下载';
+                                    downloadBtn.style.color = '#4CAF50';
+                                    downloadBtn.disabled = true; 
+                                } else {
+                                    downloadBtn.textContent = '下载失败';
+                                    downloadBtn.style.color = '#F44336';
+                                    setTimeout(() => {
+                                        downloadBtn.textContent = '下载';
+                                        downloadBtn.style.color = '';
+                                    }, 2000);
+                                }
+                            } catch (error) {
+                                console.log(error);
+                                downloadBtn.textContent = '请求出错';
+                                downloadBtn.style.color = '#F44336';
+                                setTimeout(() => {
+                                    downloadBtn.textContent = '下载';
+                                    downloadBtn.style.color = '';
+                                }, 2000);
+                            } finally {
+                                downloadBtn.disabled = false;
+                            }
+                        };
+                    }
+                    
+                    listItem.appendChild(downloadBtn);
+                    songList.appendChild(listItem);
+                });
+            } catch (error) {
+                console.error('请求出错:', error);
+                const songList = document.getElementById('song-list');
+                songList.innerHTML = '<li>请求出错，请稍后再试</li>';
+            }
+        }
+
         // 初始化页面
         document.addEventListener('DOMContentLoaded', () => {
             // Tab切换
             const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => {
+            tabs.forEach(tab => { 
                 tab.addEventListener('click', () => {
                     tabs.forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
@@ -189,8 +267,17 @@
                         content.classList.remove('active');
                     });
                     document.getElementById(`${tab.dataset.tab}-search`).classList.add('active');
+                    
+                    // 只在切换到热歌榜时加载热歌榜数据
+                    if (tab.dataset.tab === 'hot') {
+                        fetchHotSongs();
+                    } else {
+                        document.getElementById('song-list').innerHTML = '';
+                    }
                 });
             });
+            
+            // 移除默认加载热歌榜的代码
             
             // 歌曲搜索按钮点击事件
             document.getElementById('search-btn').addEventListener('click', () => {
@@ -203,6 +290,9 @@
                 const listId = document.getElementById('playlist-input').value;
                 fetchPlaylist(listId);
             });
+            
+            // 热歌榜按钮点击事件
+            document.getElementById('hot-btn').addEventListener('click', fetchHotSongs);
             
             // 回车键搜索功能
             document.getElementById('search-input').addEventListener('keypress', (e) => {

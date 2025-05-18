@@ -15,12 +15,8 @@ app.get('/api/songs', async (req, res) => {
         const { msg, n } = req.query;
         const response = await axios.get(`https://www.hhlqilongzhu.cn/api/dg_QQmusicflac.php?msg=${encodeURIComponent(msg || '')}&n=${n || ''}&type=json`);
         
-        // 检查每首歌曲是否已下载
         const songsWithDownloadStatus = await Promise.all(response.data.data.map(async song => {
-            const fileName = `${song.song_title}-${song.song_singer}.mp3`;
-            const filePath = path.join(__dirname, 'downloads', fileName);
-            const downloaded = fs.existsSync(filePath);
-            
+            const downloaded = await checkSongDownloaded(song);
             return {
                 ...song,
                 downloaded
@@ -38,65 +34,94 @@ app.get('/api/songs', async (req, res) => {
 });
 
 // 下载接口
+// 提取音乐保存方法
+async function saveMusicFile(url, fileName) {
+    const artistDir = path.join(__dirname, 'downloads');
+    if (!fs.existsSync(artistDir)) {
+        fs.mkdirSync(artistDir, { recursive: true });
+    }
+    
+    const filePath = path.join(artistDir, fileName);
+
+    const musicResponse = await axios.get(url, { responseType: 'stream' });
+    const writer = fs.createWriteStream(filePath);
+    musicResponse.data.pipe(writer);
+    
+    return new Promise((resolve, reject) => {
+        writer.on('finish', ()=> {
+            resolve(filePath);
+        });
+        writer.on('error', reject);
+    });
+}
+
+// 提取设置音乐信息方法
+function setMusicTags(filePath, songData) {
+    const tags = {
+        title: songData.song_name || songData.name,
+        artist: songData.song_singer || songData.artistsname,
+        album: '',
+    };
+    
+    return new Promise((resolve, reject) => {
+        nodeID3.write(tags, filePath, (err) => {
+            if (err) return reject(err);
+            resolve();
+        });
+    });
+}
+
+// 修改后的下载接口
 app.get('/api/download', async (req, res) => {
     try {
         const { msg, n } = req.query;
         const response = await axios.get(`https://www.hhlqilongzhu.cn/api/dg_QQmusicflac.php?msg=${encodeURIComponent(msg)}&n=${n}&type=json`);
         const songData = response.data.data;
         
-        // 创建歌手文件夹路径
-        const artistDir = path.join(__dirname, 'downloads');
-        
-        // 确保歌手文件夹存在
-        if (!fs.existsSync(artistDir)) {
-            fs.mkdirSync(artistDir, { recursive: true });
-        }
-        
-        // 下载音乐文件
-        const musicResponse = await axios.get(songData.music_url, { responseType: 'stream' });
         const fileName = `${songData.song_name}-${songData.song_singer}.mp3`;
-        const filePath = path.join(artistDir, fileName);
         
-        const writer = fs.createWriteStream(filePath);
-        musicResponse.data.pipe(writer);
+        const filePath = await saveMusicFile(songData.music_url, fileName);
+        await setMusicTags(filePath, songData);
         
-        return new Promise((resolve, reject) => {
-            writer.on('finish', () => {
-                // 设置ID3标签
-                const tags = {
-                    title: songData.song_name,
-                    artist: songData.song_singer,
-                    album: songData.album_name || '',
-                    year: songData.publish_time || '',
-                    genre: songData.genre || '',
-                    APIC: songData.cover ? songData.cover : ''
-                };
-                
-                nodeID3.write(tags, filePath, (err) => {
-                    if (err) {
-                        console.error('写入ID3标签失败:', err);
-                        return reject(err);
-                    }
-                    
-                    res.json({ 
-                        success: true, 
-                        message: '下载成功', 
-                        filePath,
-                        artist: songData.song_singer
-                    });
-                    resolve();
-                });
-            });
-            
-            writer.on('error', (err) => {
-                console.error('下载失败:', err);
-                res.status(500).json({ success: false, error: '下载失败' });
-                reject(err);
-            });
+        res.json({ 
+            success: true, 
+            message: '下载成功', 
+            filePath,
+            artist: songData.song_singer
         });
     } catch (error) {
         console.error('请求出错:', error);
         res.status(500).json({ success: false, error: '请求出错' });
+    }
+});
+
+// 热歌下载接口
+app.get('/api/downloadHot', async (req, res) => {
+    try {
+        const { id, name, artist } = req.query;
+        if (!id || !name || !artist) {
+            throw new Error('缺少必要参数');
+        }
+
+        const link = `https://www.hhlqilongzhu.cn/api/QQmusic_ck/music_bfq/API/api.php?id=${id}&type=mp3`;
+        
+        const fileName = `${name}-${artist}.mp3`;
+
+        const filePath = await saveMusicFile(link, fileName);
+        await setMusicTags(filePath, {
+            song_name: name,
+            song_singer: artist
+        });
+        
+        res.json({ 
+            success: true,  
+            message: '下载成功', 
+            filePath,
+            artist: name
+        });
+    } catch (error) {
+        console.error('请求出错:', error);
+        res.status(500).json({ success: false, error: error.message || '请求出错' });
     }
 });
 
@@ -119,12 +144,8 @@ app.get('/api/playlist', async (req, res) => {
         const { listId } = req.query;
         const response = await axios.get(`https://www.hhlqilongzhu.cn/api/dg_qqlist_sou.php?List_id=${listId}&n=&msg=&type=2`);
         
-        // 检查每首歌曲是否已下载
         const songsWithDownloadStatus = await Promise.all(response.data.data.map(async song => {
-            const fileName = `${song.title}-${song.singer}.mp3`;
-            const filePath = path.join(__dirname, 'downloads', fileName);
-            const downloaded = fs.existsSync(filePath);
-            
+            const downloaded = await checkSongDownloaded(song);
             return {
                 ...song,
                 downloaded
@@ -140,3 +161,32 @@ app.get('/api/playlist', async (req, res) => {
         res.status(500).json({ error: '请求出错' });
     }
 });
+
+// 新增热歌榜接口
+app.get('/api/hot', async (req, res) => {
+    try {
+        const response = await axios.get('https://www.hhlqilongzhu.cn/api/QQmusic_ck/music_bfq/API/index.php?sortAll=%E7%83%AD%E6%AD%8C%E6%A6%9C');
+        
+        const songsWithDownloadStatus = await Promise.all(response.data.map(async song => {
+            const downloaded = await checkSongDownloaded(song);
+            return {
+                ...song,
+                downloaded
+            };
+        }));
+        
+        res.json({
+            data: songsWithDownloadStatus
+        });
+    } catch (error) {
+        console.error('请求出错:', error);
+        res.status(500).json({ error: '请求出错' });
+    }
+});
+
+// 提取检查歌曲是否下载方法
+async function checkSongDownloaded(song) {
+    const fileName = `${song.song_title || song.title || song.name}-${song.song_singer || song.singer || song.artistsname}.mp3`;
+    const filePath = path.join(__dirname, 'downloads', fileName);
+    return fs.existsSync(filePath);
+}
