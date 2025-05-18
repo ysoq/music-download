@@ -460,11 +460,9 @@
                 fetchPlaylist(listId);
             });
 
-            // 热歌榜按钮点击事件
-            document.getElementById('hot-btn').addEventListener('click', fetchHotSongs);
-
             // 回车键搜索功能
             document.getElementById('search-input').addEventListener('keypress', (e) => {
+                console.log(e.key);
                 if (e.key === 'Enter') {
                     const songName = document.getElementById('search-input').value;
                     fetchSongs(songName);
