@@ -2,25 +2,42 @@ const express = require('express');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
+const nodeID3 = require('node-id3');
 const app = express();
 const port = 3000;
 
 // 添加静态文件服务
 app.use(express.static(path.join(__dirname)));
 
-// 定义转发接口
+// 音乐搜索接口
 app.get('/api/songs', async (req, res) => {
     try {
         const { msg, n } = req.query;
         const response = await axios.get(`https://www.hhlqilongzhu.cn/api/dg_QQmusicflac.php?msg=${encodeURIComponent(msg || '')}&n=${n || ''}&type=json`);
-        res.json(response.data);
+        
+        // 检查每首歌曲是否已下载
+        const songsWithDownloadStatus = await Promise.all(response.data.data.map(async song => {
+            const fileName = `${song.song_title}-${song.song_singer}.mp3`;
+            const filePath = path.join(__dirname, 'downloads', fileName);
+            const downloaded = fs.existsSync(filePath);
+            
+            return {
+                ...song,
+                downloaded
+            };
+        }));
+        
+        res.json({
+            ...response.data,
+            data: songsWithDownloadStatus
+        });
     } catch (error) {
         console.error('请求出错:', error);
         res.status(500).json({ error: '请求出错' });
     }
 });
 
-// 修改后的下载接口
+// 下载接口
 app.get('/api/download', async (req, res) => {
     try {
         const { msg, n } = req.query;
@@ -28,7 +45,7 @@ app.get('/api/download', async (req, res) => {
         const songData = response.data.data;
         
         // 创建歌手文件夹路径
-        const artistDir = path.join(__dirname, 'downloads', songData.song_singer);
+        const artistDir = path.join(__dirname, 'downloads');
         
         // 确保歌手文件夹存在
         if (!fs.existsSync(artistDir)) {
@@ -37,7 +54,7 @@ app.get('/api/download', async (req, res) => {
         
         // 下载音乐文件
         const musicResponse = await axios.get(songData.music_url, { responseType: 'stream' });
-        const fileName = `${songData.song_name}.mp3`;
+        const fileName = `${songData.song_name}-${songData.song_singer}.mp3`;
         const filePath = path.join(artistDir, fileName);
         
         const writer = fs.createWriteStream(filePath);
@@ -45,18 +62,30 @@ app.get('/api/download', async (req, res) => {
         
         return new Promise((resolve, reject) => {
             writer.on('finish', () => {
-                // 设置文件属性
-                fs.utimes(filePath, new Date(), new Date(), (err) => {
-                    if (err) console.error('修改文件时间属性失败:', err);
-                });
+                // 设置ID3标签
+                const tags = {
+                    title: songData.song_name,
+                    artist: songData.song_singer,
+                    album: songData.album_name || '',
+                    year: songData.publish_time || '',
+                    genre: songData.genre || '',
+                    APIC: songData.cover ? songData.cover : ''
+                };
                 
-                res.json({ 
-                    success: true, 
-                    message: '下载成功', 
-                    filePath,
-                    artist: songData.song_singer
+                nodeID3.write(tags, filePath, (err) => {
+                    if (err) {
+                        console.error('写入ID3标签失败:', err);
+                        return reject(err);
+                    }
+                    
+                    res.json({ 
+                        success: true, 
+                        message: '下载成功', 
+                        filePath,
+                        artist: songData.song_singer
+                    });
+                    resolve();
                 });
-                resolve();
             });
             
             writer.on('error', (err) => {

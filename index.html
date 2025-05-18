@@ -48,29 +48,47 @@
                     
                     // 添加下载按钮
                     const downloadBtn = document.createElement('button');
-                    downloadBtn.textContent = '下载';
                     downloadBtn.style.marginLeft = '10px';
-                    // 修改后的下载按钮点击事件
-                    downloadBtn.onclick = async () => {
+                    
+                    // 根据下载状态设置按钮
+                    if (song.downloaded) {
+                        downloadBtn.textContent = '✓ 已下载';
+                        downloadBtn.style.color = '#4CAF50';
                         downloadBtn.disabled = true;
-                        downloadBtn.textContent = '下载中...';
-                        
-                        try {
-                            const response = await fetch(`/api/download?msg=${encodeURIComponent(songName)}&n=${index + 1}`);
-                            const result = await response.json();
+                    } else {
+                        downloadBtn.textContent = '下载';
+                        downloadBtn.onclick = async () => {
+                            downloadBtn.disabled = true;
+                            downloadBtn.textContent = '下载中...';
                             
-                            if (result.success) {
-                                alert('下载成功！文件已保存到服务器');
-                            } else {
-                                alert('下载失败: ' + (result.error || '未知错误'));
+                            try {
+                                const response = await fetch(`/api/download?msg=${encodeURIComponent(songName)}&n=${index + 1}`);
+                                const result = await response.json();
+                                
+                                if (result.success) {
+                                    downloadBtn.textContent = '✓ 已下载';
+                                    downloadBtn.style.color = '#4CAF50';
+                                    downloadBtn.disabled = true; 
+                                } else {
+                                    downloadBtn.textContent = '下载失败';
+                                    downloadBtn.style.color = '#F44336';
+                                    setTimeout(() => {
+                                        downloadBtn.textContent = '下载';
+                                        downloadBtn.style.color = '';
+                                    }, 2000);
+                                }
+                            } catch (error) {
+                                downloadBtn.textContent = '请求出错';
+                                downloadBtn.style.color = '#F44336';
+                                setTimeout(() => {
+                                    downloadBtn.textContent = '下载';
+                                    downloadBtn.style.color = '';
+                                }, 2000);
+                            } finally {
+                                downloadBtn.disabled = false;
                             }
-                        } catch (error) {
-                            alert('请求出错: ' + error.message);
-                        } finally {
-                            downloadBtn.disabled = false;
-                            downloadBtn.textContent = '下载';
-                        }
-                    };
+                        };
+                    }
                     
                     listItem.appendChild(downloadBtn);
                     songList.appendChild(listItem);
