@@ -111,3 +111,32 @@ app.listen(port, () => {
         console.error('服务器启动失败:', err);
     }
 });
+
+
+// 新增歌单搜索接口
+app.get('/api/playlist', async (req, res) => {
+    try {
+        const { listId } = req.query;
+        const response = await axios.get(`https://www.hhlqilongzhu.cn/api/dg_qqlist_sou.php?List_id=${listId}&n=&msg=&type=2`);
+        
+        // 检查每首歌曲是否已下载
+        const songsWithDownloadStatus = await Promise.all(response.data.data.map(async song => {
+            const fileName = `${song.title}-${song.singer}.mp3`;
+            const filePath = path.join(__dirname, 'downloads', fileName);
+            const downloaded = fs.existsSync(filePath);
+            
+            return {
+                ...song,
+                downloaded
+            };
+        }));
+        
+        res.json({
+            ...response.data,
+            data: songsWithDownloadStatus
+        });
+    } catch (error) {
+        console.error('请求出错:', error);
+        res.status(500).json({ error: '请求出错' });
+    }
+});
