@@ -1,32 +1,194 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>音乐搜索</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .tab-container { display: flex; margin-bottom: 10px; }
-        .tab { padding: 10px 20px; cursor: pointer; border: 1px solid #ddd; }
-        .tab.active { background: #4CAF50; color: white; }
-        .search-container { display: flex; margin-bottom: 20px; }
-        #search-input, #playlist-input { flex: 1; padding: 10px; font-size: 16px; }
-        #search-btn, #playlist-btn { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
-        #song-list { list-style: none; padding: 0; }
-        #song-list li { padding: 10px; border-bottom: 1px solid #eee; }
-        .search-content { display: none; }
-        .search-content.active { display: block; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .tab {
+            padding: 12px 25px;
+            cursor: pointer;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            background: #e9ecef;
+        }
+
+        .tab.active {
+            background: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+
+        .search-container {
+            display: flex;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        #search-input,
+        #local-input,
+        #playlist-input {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-right: none;
+        }
+
+        #search-btn,
+        #local-btn,
+        #playlist-btn {
+            padding: 0 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        #search-btn:hover,
+        #playlist-btn:hover {
+            background: #45a049;
+        }
+
+        #song-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        #song-list li {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            transition: background 0.2s;
+        }
+
+        #song-list li:hover {
+            background: #f9f9f9;
+        }
+
+        #song-list li button {
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .search-content {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* 新增下载按钮样式 */
+        .delete-btn {
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #F44336;
+            background-color: white;
+            color: #F44336;
+            margin-left: 10px;
+        }
+        .delete-btn:hover {
+            background-color: #F44336;
+            color: white;
+        }
+
+        .download-btn:hover:not(:disabled) {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .download-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .download-btn.downloaded {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #388E3C;
+        }
+
+        .download-btn.error {
+            background-color: #F44336;
+            color: white;
+            border-color: #D32F2F;
+        }
+
+        .download-btn.loading {
+            background-color: #2196F3;
+            color: white;
+            border-color: #1976D2;
+        }
     </style>
 </head>
+
 <body>
     <h1>音乐搜索</h1>
-    
-    <div class="tab-container"> 
+
+    <div class="tab-container">
         <div class="tab active" data-tab="song">歌曲搜索</div>
         <div class="tab" data-tab="playlist">歌单搜索</div>
         <div class="tab" data-tab="hot">热歌榜</div>
+        <div class="tab" data-tab="local">本地歌曲</div>
     </div>
-    
+
     <!-- 歌曲搜索 -->
     <div class="search-content active" id="song-search">
         <div class="search-container">
@@ -34,7 +196,7 @@
             <button id="search-btn">搜索</button>
         </div>
     </div>
-    
+
     <!-- 歌单搜索 -->
     <div class="search-content" id="playlist-search">
         <div class="search-container">
@@ -42,44 +204,51 @@
             <button id="playlist-btn">搜索</button>
         </div>
     </div>
-    
+
     <!-- 热歌榜 -->
     <div class="search-content" id="hot-search">
+    </div>
+
+    <!-- 本地歌曲 -->
+    <div class="search-content" id="local-search">
         <div class="search-container">
+            <input type="text" id="local-input" placeholder="输入搜索关键词(必填)" required>
+            <button id="local-btn">搜索</button>
         </div>
     </div>
-    
+
     <ul id="song-list"></ul>
 
     <script>
         // 获取当前服务地址
-        
+
         async function fetchSongs(songName) {
             try {
                 if (!songName || songName.trim() === '') {
                     alert('请输入歌曲名');
                     return;
                 }
-                
+
                 const response = await fetch(`/api/songs?msg=${encodeURIComponent(songName)}`);
                 const data = await response.json();
                 const songList = document.getElementById('song-list');
-        
+
                 songList.innerHTML = ''; // 清空列表
-        
+
                 if (!data.data || data.data.length === 0) {
                     songList.innerHTML = '<li>没有找到相关歌曲</li>';
                     return;
                 }
-        
+
                 data.data.forEach((song, index) => {
                     const listItem = document.createElement('li');
                     listItem.textContent = `${song.song_title} - ${song.song_singer}`;
-                    
+
                     // 添加下载按钮
                     const downloadBtn = document.createElement('button');
+                    downloadBtn.className = 'download-btn';
                     downloadBtn.style.marginLeft = '10px';
-                    
+
                     // 根据下载状态设置按钮
                     if (song.downloaded) {
                         downloadBtn.textContent = '✓ 已下载';
@@ -90,15 +259,15 @@
                         downloadBtn.onclick = async () => {
                             downloadBtn.disabled = true;
                             downloadBtn.textContent = '下载中...';
-                            
+
                             try {
                                 const response = await fetch(`/api/download?msg=${encodeURIComponent(songName)}&n=${index + 1}`);
                                 const result = await response.json();
-                                
+
                                 if (result.success) {
                                     downloadBtn.textContent = '✓ 已下载';
                                     downloadBtn.style.color = '#4CAF50';
-                                    downloadBtn.disabled = true; 
+                                    downloadBtn.disabled = true;
                                 } else {
                                     downloadBtn.textContent = '下载失败';
                                     downloadBtn.style.color = '#F44336';
@@ -120,7 +289,7 @@
                             }
                         };
                     }
-                    
+
                     listItem.appendChild(downloadBtn);
                     songList.appendChild(listItem);
                 });
@@ -138,26 +307,26 @@
                     alert('请输入歌单ID');
                     return;
                 }
-                
+
                 const response = await fetch(`/api/playlist?listId=${encodeURIComponent(listId)}`);
                 const data = await response.json();
                 const songList = document.getElementById('song-list');
-        
+
                 songList.innerHTML = ''; // 清空列表
-        
+
                 if (!data.data || data.data.length === 0) {
                     songList.innerHTML = '<li>没有找到相关歌曲</li>';
                     return;
                 }
-        
+
                 data.data.forEach((song, index) => {
                     const listItem = document.createElement('li');
                     listItem.textContent = `${song.title} - ${song.singer}`;
-                    
+
                     // 添加下载按钮
                     const downloadBtn = document.createElement('button');
                     downloadBtn.style.marginLeft = '10px';
-                    
+
                     // 根据下载状态设置按钮
                     if (song.downloaded) {
                         downloadBtn.textContent = '✓ 已下载';
@@ -166,13 +335,13 @@
                     } else {
                         downloadBtn.textContent = '搜索歌曲';
                         downloadBtn.onclick = () => {
-                           document.getElementById('search-input').value = song.title;
-                           document.getElementById('search-btn').click(); // 触发歌曲搜索
-                           // 切换tab
-                           document.querySelector('.tab[data-tab="song"]').click();
+                            document.getElementById('search-input').value = song.title;
+                            document.getElementById('search-btn').click(); // 触发歌曲搜索
+                            // 切换tab
+                            document.querySelector('.tab[data-tab="song"]').click();
                         };
                     }
-                    
+
                     listItem.appendChild(downloadBtn);
                     songList.appendChild(listItem);
                 });
@@ -189,21 +358,21 @@
                 const response = await fetch('/api/hot');
                 const data = await response.json();
                 const songList = document.getElementById('song-list');
-        
+
                 songList.innerHTML = '';
-        
+
                 if (!data.data || data.data.length === 0) {
                     songList.innerHTML = '<li>没有找到热歌榜数据</li>';
                     return;
                 }
-        
+
                 data.data.forEach((song, index) => {
                     const listItem = document.createElement('li');
                     listItem.textContent = `${song.name} - ${song.artistsname}`;
-                    
+
                     const downloadBtn = document.createElement('button');
                     downloadBtn.style.marginLeft = '10px';
-                    
+
                     if (song.downloaded) {
                         downloadBtn.textContent = '✓ 已下载';
                         downloadBtn.style.color = '#4CAF50';
@@ -213,15 +382,15 @@
                         downloadBtn.onclick = async () => {
                             downloadBtn.disabled = true;
                             downloadBtn.textContent = '下载中...';
-                            
+
                             try {
                                 const response = await fetch(`/api/downloadHot?id=${song.id}&name=${encodeURIComponent(song.name)}&artist=${encodeURIComponent(song.artistsname)}`);
                                 const result = await response.json();
-                                
+
                                 if (result.success) {
                                     downloadBtn.textContent = '✓ 已下载';
                                     downloadBtn.style.color = '#4CAF50';
-                                    downloadBtn.disabled = true; 
+                                    downloadBtn.disabled = true;
                                 } else {
                                     downloadBtn.textContent = '下载失败';
                                     downloadBtn.style.color = '#F44336';
@@ -243,7 +412,7 @@
                             }
                         };
                     }
-                    
+
                     listItem.appendChild(downloadBtn);
                     songList.appendChild(listItem);
                 });
@@ -258,16 +427,16 @@
         document.addEventListener('DOMContentLoaded', () => {
             // Tab切换
             const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => { 
+            tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
                     tabs.forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
-                    
+
                     document.querySelectorAll('.search-content').forEach(content => {
                         content.classList.remove('active');
                     });
                     document.getElementById(`${tab.dataset.tab}-search`).classList.add('active');
-                    
+
                     // 只在切换到热歌榜时加载热歌榜数据
                     if (tab.dataset.tab === 'hot') {
                         fetchHotSongs();
@@ -276,24 +445,24 @@
                     }
                 });
             });
-            
+
             // 移除默认加载热歌榜的代码
-            
+
             // 歌曲搜索按钮点击事件
             document.getElementById('search-btn').addEventListener('click', () => {
                 const songName = document.getElementById('search-input').value;
                 fetchSongs(songName);
             });
-            
+
             // 歌单搜索按钮点击事件
             document.getElementById('playlist-btn').addEventListener('click', () => {
                 const listId = document.getElementById('playlist-input').value;
                 fetchPlaylist(listId);
             });
-            
+
             // 热歌榜按钮点击事件
             document.getElementById('hot-btn').addEventListener('click', fetchHotSongs);
-            
+
             // 回车键搜索功能
             document.getElementById('search-input').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
@@ -301,7 +470,7 @@
                     fetchSongs(songName);
                 }
             });
-            
+
             document.getElementById('playlist-input').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     const listId = document.getElementById('playlist-input').value;
@@ -309,6 +478,89 @@
                 }
             });
         });
+
+        async function fetchLocalSongs(keyword) {
+            try {
+                if (!keyword || keyword.trim() === '') {
+                    alert('请输入搜索关键词');
+                    return;
+                }
+
+                const response = await fetch('/api/local');
+                const data = await response.json();
+                const songList = document.getElementById('song-list');
+
+                songList.innerHTML = '';
+
+                if (!data.data || data.data.length === 0) {
+                    songList.innerHTML = '<li>没有找到本地歌曲</li>';
+                    return;
+                }
+
+                // 过滤匹配关键词的歌曲
+                const filteredSongs = data.data.filter(song =>
+                    song.name.includes(keyword) ||
+                    song.artist.includes(keyword)
+                );
+
+                if (filteredSongs.length === 0) {
+                    songList.innerHTML = '<li>没有找到匹配的本地歌曲</li>';
+                    return;
+                }
+
+                filteredSongs.forEach(song => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `${song.name} - ${song.artist}`;
+
+                    // 添加删除按钮
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-btn';
+                    deleteBtn.textContent = '删除';
+                    deleteBtn.onclick = async () => {
+                        if (confirm('确定要删除这首歌曲吗？')) {
+                            try {
+                                const response = await fetch(`/api/delete?path=${encodeURIComponent(song.path)}`);
+                                const result = await response.json();
+
+                                if (result.success) {
+                                    listItem.remove();
+                                } else {
+                                    alert('删除失败');
+                                }
+                            } catch (error) {
+                                console.error('删除出错:', error);
+                                alert('删除出错');
+                            }
+                        }
+                    };
+
+                    listItem.appendChild(deleteBtn);
+                    songList.appendChild(listItem);
+                });
+            } catch (error) {
+                console.error('请求出错:', error);
+                const songList = document.getElementById('song-list');
+                songList.innerHTML = '<li>请求出错，请稍后再试</li>';
+            }
+        }
+
+        // 在DOMContentLoaded中添加事件监听
+        document.addEventListener('DOMContentLoaded', () => {
+            // 歌曲搜索按钮点击事件
+            document.getElementById('local-btn').addEventListener('click', () => {
+                const keyword = document.getElementById('local-input').value;
+                fetchLocalSongs(keyword);
+            });
+
+            // 本地搜索框回车键事件
+            document.getElementById('local-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const keyword = document.getElementById('local-input').value;
+                    fetchLocalSongs(keyword);
+                }
+            });
+        });
     </script>
 </body>
+
 </html>

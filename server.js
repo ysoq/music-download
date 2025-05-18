@@ -190,3 +190,52 @@ async function checkSongDownloaded(song) {
     const filePath = path.join(__dirname, 'downloads', fileName);
     return fs.existsSync(filePath);
 }
+
+
+// 新增本地歌曲接口
+app.get('/api/local', async (req, res) => {
+    try {
+        const downloadsDir = path.join(__dirname, 'downloads');
+        if (!fs.existsSync(downloadsDir)) {
+            return res.json({ data: [] });
+        }
+
+        const files = fs.readdirSync(downloadsDir);
+        const songs = files
+            .filter(file => file.endsWith('.mp3'))
+            .map(file => {
+                const [name, artist] = file.replace('.mp3', '').split('-');
+                return {
+                    name: decodeURIComponent(name),
+                    artist: decodeURIComponent(artist),
+                    path: path.join(downloadsDir, file)
+                };
+            });
+
+        res.json({ data: songs });
+    } catch (error) {
+        console.error('获取本地歌曲出错:', error);
+        res.status(500).json({ error: '获取本地歌曲出错' });
+    }
+});
+
+// 新增删除歌曲接口
+app.get('/api/delete', async (req, res) => {
+    try {
+        const { path: filePath } = req.query;
+        if (!filePath) {
+            return res.status(400).json({ success: false, error: '缺少文件路径' });
+        }
+
+        const decodedPath = decodeURIComponent(filePath);
+        if (!fs.existsSync(decodedPath)) {
+            return res.json({ success: true, message: '文件不存在' });
+        }
+
+        fs.unlinkSync(decodedPath);
+        res.json({ success: true, message: '删除成功' });
+    } catch (error) {
+        console.error('删除歌曲出错:', error);
+        res.status(500).json({ success: false, error: '删除歌曲出错' });
+    }
+});
