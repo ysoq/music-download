@@ -14,7 +14,7 @@ app.get('/api/songs', async (req, res) => {
     try {
         const { msg, n } = req.query;
         const response = await axios.get(`https://www.hhlqilongzhu.cn/api/dg_QQmusicflac.php?msg=${encodeURIComponent(msg || '')}&n=${n || ''}&type=json`);
-        
+
         const songsWithDownloadStatus = await Promise.all(response.data.data.map(async song => {
             const downloaded = await checkSongDownloaded(song);
             return {
@@ -22,7 +22,7 @@ app.get('/api/songs', async (req, res) => {
                 downloaded
             };
         }));
-        
+
         res.json({
             ...response.data,
             data: songsWithDownloadStatus
@@ -36,23 +36,30 @@ app.get('/api/songs', async (req, res) => {
 // 下载接口
 // 提取音乐保存方法
 async function saveMusicFile(url, fileName) {
-    const artistDir = path.join(__dirname, 'downloads');
-    if (!fs.existsSync(artistDir)) {
-        fs.mkdirSync(artistDir, { recursive: true });
-    }
-    
-    const filePath = path.join(artistDir, fileName);
+    try {
+        const artistDir = path.join(__dirname, 'downloads');
+        if (!fs.existsSync(artistDir)) {
+            fs.mkdirSync(artistDir, { recursive: true });
+        }
+        const safeFileName = fileName.replace(/[\\/]/g, '-');
 
-    const musicResponse = await axios.get(url, { responseType: 'stream' });
-    const writer = fs.createWriteStream(filePath);
-    musicResponse.data.pipe(writer);
-    
-    return new Promise((resolve, reject) => {
-        writer.on('finish', ()=> {
-            resolve(filePath);
+        const filePath = path.join(artistDir, safeFileName);
+
+        const musicResponse = await axios.get(url, { responseType: 'stream' });
+        const writer = fs.createWriteStream(filePath);
+        musicResponse.data.pipe(writer);
+
+        return new Promise((resolve, reject) => {
+            writer.on('finish', () => {
+                resolve(filePath);
+            });
+            writer.on('error', reject);
         });
-        writer.on('error', reject);
-    });
+    } catch (error) {
+        console.error('音乐下载请求出错:', error);
+        return Promise.reject(error);
+    }
+
 }
 
 // 提取设置音乐信息方法
@@ -62,7 +69,7 @@ function setMusicTags(filePath, songData) {
         artist: songData.song_singer || songData.artistsname,
         album: '',
     };
-    
+
     return new Promise((resolve, reject) => {
         nodeID3.write(tags, filePath, (err) => {
             if (err) return reject(err);
@@ -77,15 +84,15 @@ app.get('/api/download', async (req, res) => {
         const { msg, n } = req.query;
         const response = await axios.get(`https://www.hhlqilongzhu.cn/api/dg_QQmusicflac.php?msg=${encodeURIComponent(msg)}&n=${n}&type=json`);
         const songData = response.data.data;
-        
+
         const fileName = `${songData.song_name}-${songData.song_singer}.mp3`;
-        
+
         const filePath = await saveMusicFile(songData.music_url, fileName);
         await setMusicTags(filePath, songData);
-        
-        res.json({ 
-            success: true, 
-            message: '下载成功', 
+
+        res.json({
+            success: true,
+            message: '下载成功',
             filePath,
             artist: songData.song_singer
         });
@@ -104,7 +111,7 @@ app.get('/api/downloadHot', async (req, res) => {
         }
 
         const link = `https://www.hhlqilongzhu.cn/api/QQmusic_ck/music_bfq/API/api.php?id=${id}&type=mp3`;
-        
+
         const fileName = `${name}-${artist}.mp3`;
 
         const filePath = await saveMusicFile(link, fileName);
@@ -112,10 +119,10 @@ app.get('/api/downloadHot', async (req, res) => {
             song_name: name,
             song_singer: artist
         });
-        
-        res.json({ 
-            success: true,  
-            message: '下载成功', 
+
+        res.json({
+            success: true,
+            message: '下载成功',
             filePath,
             artist: name
         });
@@ -143,7 +150,7 @@ app.get('/api/playlist', async (req, res) => {
     try {
         const { listId } = req.query;
         const response = await axios.get(`https://www.hhlqilongzhu.cn/api/dg_qqlist_sou.php?List_id=${listId}&n=&msg=&type=2`);
-        
+
         const songsWithDownloadStatus = await Promise.all(response.data.data.map(async song => {
             const downloaded = await checkSongDownloaded(song);
             return {
@@ -151,7 +158,7 @@ app.get('/api/playlist', async (req, res) => {
                 downloaded
             };
         }));
-        
+
         res.json({
             ...response.data,
             data: songsWithDownloadStatus
@@ -166,7 +173,7 @@ app.get('/api/playlist', async (req, res) => {
 app.get('/api/hot', async (req, res) => {
     try {
         const response = await axios.get('https://www.hhlqilongzhu.cn/api/QQmusic_ck/music_bfq/API/index.php?sortAll=%E7%83%AD%E6%AD%8C%E6%A6%9C');
-        
+
         const songsWithDownloadStatus = await Promise.all(response.data.map(async song => {
             const downloaded = await checkSongDownloaded(song);
             return {
@@ -174,7 +181,7 @@ app.get('/api/hot', async (req, res) => {
                 downloaded
             };
         }));
-        
+
         res.json({
             data: songsWithDownloadStatus
         });
