@@ -11,12 +11,17 @@ app.use(express.static(path.join(__dirname)));
 
 async function searchMusic(api, msg) {
     console.log(api,msg)
-    const response = await axios.get(`${api}?msg=${encodeURIComponent(msg || '')}&n=&type=json`);
+    const response = await axios.get(`${api}?gm=${encodeURIComponent(msg || '')}&msg=${encodeURIComponent(msg || '')}&n=&type=json`);
 
     const songsWithDownloadStatus = await Promise.all(response.data.data.map(async song => {
-        const downloaded = await checkSongDownloaded(song);
-        return {
+        const item = {
+            song_title: song.title,
+            song_singer: song.singer,
             ...song,
+        }
+        const downloaded = await checkSongDownloaded(item);
+        return {
+            ...item,
             downloaded
         };
     }));
@@ -90,8 +95,10 @@ function setMusicTags(filePath, songData) {
 app.get('/api/download', async (req, res) => {
     try {
         const { msg, n, type } = req.query;
-        const response = await axios.get(`https://www.hhlqilongzhu.cn/api/${type}.php?msg=${encodeURIComponent(msg)}&n=${n}&type=json`);
-        const songData = response.data.data;
+        const response = await axios.get(`https://www.hhlqilongzhu.cn/api/${type}.php?gm=${encodeURIComponent(msg || '')}&msg=${encodeURIComponent(msg)}&n=${n}&type=json`);
+        const songData = response.data?.data || response.data;
+        songData.song_name = songData.song_name || songData.title;
+        songData.song_singer = songData.song_singer || songData.singer
 
         const fileName = `${songData.song_name}-${songData.song_singer}.mp3`;
 

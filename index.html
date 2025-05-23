@@ -56,6 +56,7 @@
         }
 
         #search-input,
+        #netease-input,
         #local-input,
         #playlist-input {
             flex: 1;
@@ -67,6 +68,7 @@
 
         #search-btn,
         #local-btn,
+        #netease-btn,
         #playlist-btn {
             padding: 0 20px;
             background: #4CAF50;
@@ -101,7 +103,7 @@
         #song-list li:hover {
             background: #f9f9f9;
         }
- 
+
         .search-content {
             display: none;
             background: white;
@@ -187,6 +189,7 @@
             background: white;
             transition: background 0.2s;
         }
+
         .download-btn {
             border: none;
             padding: 8px 15px;
@@ -206,9 +209,19 @@
 
     <div class="tab-container">
         <div class="tab active" data-tab="song">QQ音乐</div>
+        <div class="tab" data-tab="netease">网易云</div>
         <div class="tab" data-tab="playlist">歌单搜索</div>
         <div class="tab" data-tab="hot">热歌榜</div>
         <div class="tab" data-tab="local">本地歌曲</div>
+    </div>
+
+    <!-- 网易云音乐搜索 -->
+    <div class="search-content" id="netease-search">
+        <div class="search-container">
+            <input type="text" id="netease-input" placeholder="输入歌曲名" value="">
+            <button id="netease-btn">搜索</button>
+        </div>
+        <ul id="netease-song-list" class="song-list"></ul>
     </div>
 
     <!-- 歌曲搜索 -->
@@ -257,7 +270,7 @@
 
                 const response = await fetch(`/api/songs?type=${type}&msg=${encodeURIComponent(songName)}`);
                 const data = await response.json();
-                const songList = document.getElementById('song-list');
+                const songList = document.getElementById(type === 'dg_QQmusicflac' ? 'song-list' : 'netease-song-list');
 
                 songList.innerHTML = ''; // 清空列表
 
@@ -287,7 +300,7 @@
                             downloadBtn.textContent = '下载中...';
 
                             try {
-                                const response = await fetch(`/api/download?msg=${encodeURIComponent(songName)}&n=${index + 1}`);
+                                const response = await fetch(`/api/download?type=${type}&msg=${encodeURIComponent(songName)}&n=${index + 1}`);
                                 const result = await response.json();
 
                                 if (result.success) {
@@ -575,6 +588,25 @@
                 if (e.key === 'Enter') {
                     const keyword = document.getElementById('local-input').value;
                     fetchLocalSongs(keyword);
+                }
+            });
+        });
+
+
+        // 在DOMContentLoaded中添加事件监听
+        document.addEventListener('DOMContentLoaded', () => {
+            // ... existing event listeners ...
+
+            // 网易云搜索按钮点击事件
+            document.getElementById('netease-btn').addEventListener('click', () => {
+                const songName = document.getElementById('netease-input').value;
+                fetchSongs(songName, 'dg_wyymusic');
+            });
+
+            // 网易云搜索框回车键事件
+            document.getElementById('netease-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('netease-btn').click();
                 }
             });
         });
