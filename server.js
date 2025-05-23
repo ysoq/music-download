@@ -9,22 +9,31 @@ const port = 3000;
 // 添加静态文件服务
 app.use(express.static(path.join(__dirname)));
 
+async function searchMusic(api, msg) {
+    console.log(api,msg)
+    const response = await axios.get(`${api}?msg=${encodeURIComponent(msg || '')}&n=&type=json`);
+
+    const songsWithDownloadStatus = await Promise.all(response.data.data.map(async song => {
+        const downloaded = await checkSongDownloaded(song);
+        return {
+            ...song,
+            downloaded
+        };
+    }));
+    return songsWithDownloadStatus
+}
+
+
 // 音乐搜索接口
 app.get('/api/songs', async (req, res) => {
     try {
-        const { msg, n } = req.query;
-        const response = await axios.get(`https://www.hhlqilongzhu.cn/api/dg_QQmusicflac.php?msg=${encodeURIComponent(msg || '')}&n=${n || ''}&type=json`);
-
-        const songsWithDownloadStatus = await Promise.all(response.data.data.map(async song => {
-            const downloaded = await checkSongDownloaded(song);
-            return {
-                ...song,
-                downloaded
-            };
-        }));
+        const { msg, type } = req.query;
+        console.log(msg,type)
+        // type : dg_wyymusic / dg_QQmusicflac
+        const songsWithDownloadStatus = await searchMusic(`https://www.hhlqilongzhu.cn/api/${type}.php`, msg);
 
         res.json({
-            ...response.data,
+            code: 200,
             data: songsWithDownloadStatus
         });
     } catch (error) {
@@ -67,7 +76,6 @@ function setMusicTags(filePath, songData) {
     const tags = {
         title: songData.song_name || songData.name,
         artist: songData.song_singer || songData.artistsname,
-        album: '',
     };
 
     return new Promise((resolve, reject) => {
@@ -78,11 +86,11 @@ function setMusicTags(filePath, songData) {
     });
 }
 
-// 修改后的下载接口
+// 下载接口
 app.get('/api/download', async (req, res) => {
     try {
-        const { msg, n } = req.query;
-        const response = await axios.get(`https://www.hhlqilongzhu.cn/api/dg_QQmusicflac.php?msg=${encodeURIComponent(msg)}&n=${n}&type=json`);
+        const { msg, n, type } = req.query;
+        const response = await axios.get(`https://www.hhlqilongzhu.cn/api/${type}.php?msg=${encodeURIComponent(msg)}&n=${n}&type=json`);
         const songData = response.data.data;
 
         const fileName = `${songData.song_name}-${songData.song_singer}.mp3`;

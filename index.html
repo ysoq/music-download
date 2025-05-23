@@ -205,7 +205,7 @@
     <h1>音乐搜索</h1>
 
     <div class="tab-container">
-        <div class="tab active" data-tab="song">歌曲搜索</div>
+        <div class="tab active" data-tab="song">QQ音乐</div>
         <div class="tab" data-tab="playlist">歌单搜索</div>
         <div class="tab" data-tab="hot">热歌榜</div>
         <div class="tab" data-tab="local">本地歌曲</div>
@@ -248,14 +248,14 @@
     <script>
         // 获取当前服务地址
 
-        async function fetchSongs(songName) {
+        async function fetchSongs(songName, type) {
             try {
                 if (!songName || songName.trim() === '') {
                     alert('请输入歌曲名');
                     return;
                 }
 
-                const response = await fetch(`/api/songs?msg=${encodeURIComponent(songName)}`);
+                const response = await fetch(`/api/songs?type=${type}&msg=${encodeURIComponent(songName)}`);
                 const data = await response.json();
                 const songList = document.getElementById('song-list');
 
@@ -471,7 +471,7 @@
             // 歌曲搜索按钮点击事件
             document.getElementById('search-btn').addEventListener('click', () => {
                 const songName = document.getElementById('search-input').value;
-                fetchSongs(songName);
+                fetchSongs(songName, 'dg_QQmusicflac');
             });
 
             // 歌单搜索按钮点击事件
@@ -484,8 +484,7 @@
             document.getElementById('search-input').addEventListener('keypress', (e) => {
                 console.log(e.key);
                 if (e.key === 'Enter') {
-                    const songName = document.getElementById('search-input').value;
-                    fetchSongs(songName);
+                    document.getElementById('search-btn').click();
                 }
             });
 
