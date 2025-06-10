@@ -9,11 +9,14 @@ const port = 3000;
 // 添加静态文件服务
 app.use(express.static(path.join(__dirname)));
 
-async function searchMusic(api, msg) {
+async function searchMusic(type, msg) {
+    const api = `https://www.hhlqilongzhu.cn/api/${type}.php`
     console.log(api,msg)
-    const response = await axios.get(`${api}?gm=${encodeURIComponent(msg || '')}&msg=${encodeURIComponent(msg || '')}&n=&type=json`);
 
-    const songsWithDownloadStatus = await Promise.all(response.data.data.map(async song => {
+
+    const response = await axios.get(`${api}?gm=${encodeURIComponent(msg || '')}&msg=${encodeURIComponent(msg || '')}&n=&type=json`);
+    const list = type  === 'dg_QQmusicflac' ? response.data.data : response.data
+    const songsWithDownloadStatus = await Promise.all(list.map(async song => {
         const item = {
             song_title: song.title,
             song_singer: song.singer,
@@ -35,7 +38,7 @@ app.get('/api/songs', async (req, res) => {
         const { msg, type } = req.query;
         console.log(msg,type)
         // type : dg_wyymusic / dg_QQmusicflac
-        const songsWithDownloadStatus = await searchMusic(`https://www.hhlqilongzhu.cn/api/${type}.php`, msg);
+        const songsWithDownloadStatus = await searchMusic(type, msg);
 
         res.json({
             code: 200,
@@ -95,14 +98,16 @@ function setMusicTags(filePath, songData) {
 app.get('/api/download', async (req, res) => {
     try {
         const { msg, n, type } = req.query;
-        const response = await axios.get(`https://www.hhlqilongzhu.cn/api/${type}.php?gm=${encodeURIComponent(msg || '')}&msg=${encodeURIComponent(msg)}&n=${n}&type=json`);
+        const api = `https://www.hhlqilongzhu.cn/api/${type}.php?gm=${encodeURIComponent(msg || '')}&msg=${encodeURIComponent(msg)}&n=${n}&type=json`
+        const response = await axios.get(api);
         const songData = response.data?.data || response.data;
         songData.song_name = songData.song_name || songData.title;
         songData.song_singer = songData.song_singer || songData.singer
 
         const fileName = `${songData.song_name}-${songData.song_singer}.mp3`;
-
-        const filePath = await saveMusicFile(songData.music_url, fileName);
+        const musicUrl = songData.music_url || songData.url;
+        
+        const filePath = await saveMusicFile(musicUrl, fileName);
         await setMusicTags(filePath, songData);
 
         res.json({

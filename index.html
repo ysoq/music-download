@@ -209,7 +209,7 @@
 
     <div class="tab-container">
         <div class="tab active" data-tab="song">QQ音乐</div>
-        <div class="tab" data-tab="netease">网易云</div>
+        <div class="tab" data-tab="netease">聚合搜索</div>
         <div class="tab" data-tab="playlist">歌单搜索</div>
         <div class="tab" data-tab="hot">热歌榜</div>
         <div class="tab" data-tab="local">本地歌曲</div>
@@ -600,7 +600,7 @@
             // 网易云搜索按钮点击事件
             document.getElementById('netease-btn').addEventListener('click', () => {
                 const songName = document.getElementById('netease-input').value;
-                fetchSongs(songName, 'dg_wyymusic');
+                fetchSongs(songName, 'joox/juhe_music');
             });
 
             // 网易云搜索框回车键事件
