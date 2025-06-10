@@ -122,6 +122,24 @@ app.get('/api/download', async (req, res) => {
     }
 });
 
+app.get('/api/musicLink', async (req, res) => {
+    try {
+        const { msg, n, type } = req.query;
+        const api = `https://www.hhlqilongzhu.cn/api/${type}.php?gm=${encodeURIComponent(msg || '')}&msg=${encodeURIComponent(msg)}&n=${n}&type=json`
+        const response = await axios.get(api);
+        const songData = response.data?.data || response.data;
+
+        const musicUrl = songData.music_url || songData.url;
+        const musicResponse = await axios.get(musicUrl, { responseType: 'stream' });
+
+        res.setHeader('Content-Type', 'audio/mpeg');
+        musicResponse.data.pipe(res);
+    } catch (error) {
+        console.error('请求出错:', error);
+        res.status(500).json({ success: false, error: '请求出错' });
+    }
+})
+
 // 热歌下载接口
 app.get('/api/downloadHot', async (req, res) => {
     try {

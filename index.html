@@ -185,7 +185,6 @@
             border-bottom: 1px solid #eee;
             display: flex;
             align-items: center;
-            justify-content: space-between;
             background: white;
             transition: background 0.2s;
         }
@@ -196,6 +195,7 @@
             border-radius: 4px;
             font-size: 14px;
             transition: all 0.2s;
+            margin-left: 10px;
         }
 
         .song-list li:hover {
@@ -286,7 +286,7 @@
                     // 添加下载按钮
                     const downloadBtn = document.createElement('button');
                     downloadBtn.className = 'download-btn';
-                    downloadBtn.style.marginLeft = '10px';
+                    downloadBtn.style.marginLeft = 'auto';
 
                     // 根据下载状态设置按钮
                     if (song.downloaded) {
@@ -330,6 +330,15 @@
                     }
 
                     listItem.appendChild(downloadBtn);
+                    // 添加播放按钮
+                    const playBtn = document.createElement('button');
+                    playBtn.className = 'download-btn';
+                    playBtn.textContent = '播放';
+                    playBtn.onclick = () => {
+                        window.open(`/api/musicLink?type=${type}&msg=${encodeURIComponent(song.song_title)}&n=${index + 1}`, '_blank');
+                    };
+                    listItem.appendChild(playBtn);
+
                     songList.appendChild(listItem);
                 });
             } catch (error) {
